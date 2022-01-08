@@ -1,5 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:sms_advanced/sms_advanced.dart';
+import 'package:sms_sender/data.dart';
+import 'package:sms_sender/student.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,12 +33,38 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
-  var dio = Dio();
+  late Student _student;
+  late String _studentName = 'No recipient';
+  bool _loading = false;
 
   Future _getStudent() async {
-    var response = await dio.get("http://192.168.1.123/api/sms_api/public/api/student");
-    print(response.data.toString());
+    _loading = true;
+    Data.getStudent().then((student) {
+      setState(() {
+        _student = student;
+        _loading = false;
+
+        _studentName = '${_student.next.firstName} ${_student.next.surName}';
+      });
+    });
+
+    sendMessage();
+  }
+
+  void sendMessage() {
+    SmsSender sender = SmsSender();
+    String address = _student.next.mobileNumber;
+    String messageText = _student.message;
+
+    SmsMessage message = SmsMessage(address, messageText);
+    message.onStateChanged.listen((state) {
+      if (state == SmsMessageState.Sent) {
+        print("SMS is sent!");
+      } else if (state == SmsMessageState.Delivered) {
+        print("SMS is delivered!");
+      }
+    });
+    sender.sendSms(message);
   }
 
   @override
@@ -50,11 +78,11 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'You have pushed the button this many times:',
+              'Send message to...',
             ),
             Text(
-              'Test',
-              style: Theme.of(context).textTheme.headline4,
+              _studentName,
+              style: Theme.of(context).textTheme.headline6,
             ),
           ],
         ),
@@ -62,8 +90,8 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _getStudent,
         tooltip: 'Increment',
-        child: const Icon(Icons.play_arrow),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        child: const Icon(Icons.sync),
+      ),
     );
   }
 }
