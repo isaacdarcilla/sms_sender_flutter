@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sms_advanced/sms_advanced.dart';
 import 'package:sms_sender/data.dart';
 import 'package:sms_sender/student.dart';
+import 'package:telephony/telephony.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,38 +34,48 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+
+  final Telephony telephony = Telephony.instance;
+
   late Student _student;
-  late String _studentName = 'No recipient';
-  bool _loading = false;
+  late String _studentName = "No recipient yet.";
+  bool _hasData = false;
+
+  @override
+  void initState() {
+    super.initState();
+    initPlatformState();
+  }
+
+  Future<void> initPlatformState() async {
+    final bool? result = await telephony.requestPhoneAndSmsPermissions;
+  }
 
   Future _getStudent() async {
-    _loading = true;
     Data.getStudent().then((student) {
       setState(() {
         _student = student;
-        _loading = false;
+        _hasData = true;
 
         _studentName = '${_student.next.firstName} ${_student.next.surName}';
       });
     });
-
-    sendMessage();
   }
 
-  void sendMessage() {
-    SmsSender sender = SmsSender();
+  void _sendMessage() {
     String address = _student.next.mobileNumber;
     String messageText = _student.message;
 
-    SmsMessage message = SmsMessage(address, messageText);
-    message.onStateChanged.listen((state) {
-      if (state == SmsMessageState.Sent) {
-        print("SMS is sent!");
-      } else if (state == SmsMessageState.Delivered) {
-        print("SMS is delivered!");
-      }
-    });
-    sender.sendSms(message);
+    // ignore: prefer_function_declarations_over_variables
+    final SmsSendStatusListener listener = (SendStatus status) {
+      print(status);
+    };
+
+    telephony.sendSms(
+        to: address,
+        message: messageText,
+        statusListener: listener
+    );
   }
 
   @override
@@ -82,15 +93,24 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               _studentName,
-              style: Theme.of(context).textTheme.headline6,
+              style: Theme
+                  .of(context)
+                  .textTheme
+                  .headline6,
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: !_hasData
+          ? FloatingActionButton(
         onPressed: _getStudent,
-        tooltip: 'Increment',
+        tooltip: 'Get student',
         child: const Icon(Icons.sync),
+      )
+          : FloatingActionButton(
+        onPressed: _sendMessage,
+        tooltip: 'Send message',
+        child: const Icon(Icons.send_rounded),
       ),
     );
   }
