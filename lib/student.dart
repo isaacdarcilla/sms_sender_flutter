@@ -7,33 +7,37 @@ String studentToJson(Student data) => json.encode(data.toJson());
 class Student {
   Student({
     required this.success,
-    required this.next,
-    required this.previous,
+    required this.current,
+    required this.receiver,
+    required this.sent,
     required this.message,
   });
 
   bool success;
-  Next next;
-  dynamic previous;
+  Current current;
+  int receiver;
+  int sent;
   String message;
 
   factory Student.fromJson(Map<String, dynamic> json) => Student(
     success: json["success"],
-    next: Next.fromJson(json["next"]),
-    previous: json["previous"],
+    current: Current.fromJson(json["current"]),
+    receiver: json["receiver"],
+    sent: json["sent"],
     message: json["message"],
   );
 
   Map<String, dynamic> toJson() => {
     "success": success,
-    "next": next.toJson(),
-    "previous": previous,
+    "current": current.toJson(),
+    "receiver": receiver,
+    "sent": sent,
     "message": message,
   };
 }
 
-class Next {
-  Next({
+class Current {
+  Current({
     required this.id,
     required this.firstName,
     required this.middleName,
@@ -61,7 +65,7 @@ class Next {
   int isSmsSent;
   int isCoe;
 
-  factory Next.fromJson(Map<String, dynamic> json) => Next(
+  factory Current.fromJson(Map<String, dynamic> json) => Current(
     id: json["id"],
     firstName: json["first_name"],
     middleName: json["middle_name"],
