@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sms_sender/count.dart';
 import 'package:sms_sender/data.dart';
 import 'package:sms_sender/student.dart';
 import 'package:telephony/telephony.dart';
@@ -35,18 +36,16 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final Telephony telephony = Telephony.instance;
 
-  late Student _student;
-  late String _studentName = "No recipient yet.";
-
-  int receiver = 0;
-  int sent = 0;
-  late String id;
+  List<Student>? _student;
+  Count? _count;
   bool _hasData = false;
-  bool _sending = false;
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
+    _getStudents();
+    _getCount();
     initPlatformState();
   }
 
@@ -54,67 +53,44 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool? result = await telephony.requestPhoneAndSmsPermissions;
   }
 
-  Future _getStudent() async {
+  Future _getStudents() async {
+    _loading = true;
     Data.getStudent().then((student) {
       setState(() {
         _student = student;
+        _loading = false;
         _hasData = true;
-
-        id = _student.current.id.toString();
-        receiver = _student.receiver;
-        sent = _student.sent;
-
-        _studentName =
-            '${_student.current.firstName} ${_student.current.surName}';
       });
     });
   }
 
-  Future _postAndGetStudent(id) async {
-    Data.postAndGetStudent(id).then((student) {
+  Future _getCount() async {
+    Data.getCount().then((count) {
       setState(() {
-        _student = student;
-        _hasData = true;
-
-        id = _student.current.id.toString();
-        receiver = _student.receiver;
-        sent = _student.sent;
-
-        _studentName =
-            '${_student.current.firstName} ${_student.current.surName}';
+        _count = count;
       });
     });
-
-    _sendMessage();
   }
 
-  void _sendMessage() {
-    String address = _student.current.mobileNumber;
-    String messageText = _student.message;
+  Future _send() async {
+    for (var i in _student!) {
+      _sendMessage(i.id, i.mobileNumber, i.message);
+    }
+  }
 
-    setState(() {
-      _sending = true;
-    });
-
-    // ignore: prefer_function_declarations_over_variables
-    final SmsSendStatusListener listener = (SendStatus status) {
-      // ignore: unrelated_type_equality_checks
-      if (status == 'SmsStatus.SENT') {
-        _postAndGetStudent(id);
-      }
-    };
+  void _sendMessage(id, address, message) {
+    Data.postAndGetStudent(id.toString());
+    _getCount();
 
     telephony.sendSms(
-        to: address,
-        message: messageText,
-        statusListener: listener
+      to: address,
+      message: message,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blueAccent,
       body: ListView(
         children: <Widget>[
           Column(children: <Widget>[
@@ -178,7 +154,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             onPressed: () {},
                           ),
                           Text(
-                            receiver.toString(),
+                            '${_count?.students ?? 0}',
                             style: const TextStyle(
                                 fontFamily: 'Quicksand',
                                 fontSize: 30.0,
@@ -196,7 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             onPressed: () {},
                           ),
                           Text(
-                            sent.toString(),
+                            '${_count?.sent ?? 0}',
                             style: const TextStyle(
                                 fontFamily: 'Quicksand',
                                 fontSize: 30.0,
@@ -212,36 +188,75 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ]),
           ]),
-          const SizedBox(height: 30.0),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Text(
-                  'Send message to...',
-                ),
-                Text(
-                  _studentName,
-                  style: Theme.of(context).textTheme.headline6,
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 15.0),
+          _loading == true
+              ? Container(
+                  alignment: Alignment.topCenter,
+                  margin: const EdgeInsets.only(top: 20),
+                  child: const CircularProgressIndicator(
+                    value: 0.8,
+                  ))
+              : const SizedBox(height: 15.0),
+          for (var i in _student!)
+            listItem('${i.firstName.toString()} ${i.surName.toString()}',
+                Colors.blue, Icons.person, i.mobileNumber, i.yearLevel)
         ],
       ),
       floatingActionButton: !_hasData
           ? FloatingActionButton(
               backgroundColor: Colors.yellow,
-              onPressed: _getStudent,
+              onPressed: _getStudents,
               tooltip: 'Get student',
               child: const Icon(Icons.sync),
             )
           : FloatingActionButton(
               backgroundColor: Colors.yellow,
-              onPressed: _sendMessage,
+              onPressed: _send,
               tooltip: 'Send message',
               child: const Icon(Icons.send_rounded),
             ),
+    );
+  }
+
+  Widget listItem(String title, Color buttonColor, iconButton, number, level) {
+    return Padding(
+      padding: const EdgeInsets.all(10.0),
+      child: Row(
+        children: <Widget>[
+          Container(
+            height: 50.0,
+            width: 50.0,
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(25.0),
+                color: buttonColor.withOpacity(0.3)),
+            child: Icon(iconButton, color: buttonColor, size: 25.0),
+          ),
+          const SizedBox(width: 25.0),
+          SizedBox(
+              width: MediaQuery.of(context).size.width - 100.0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        title,
+                        style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 15.0,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        number,
+                      )
+                    ],
+                  ),
+                ],
+              )),
+        ],
+      ),
     );
   }
 }

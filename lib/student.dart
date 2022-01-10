@@ -1,43 +1,16 @@
+// To parse this JSON data, do
+//
+//     final student = studentFromJson(jsonString);
+
+import 'package:meta/meta.dart';
 import 'dart:convert';
 
-Student studentFromJson(String str) => Student.fromJson(json.decode(str));
+List<Student> studentFromJson(String str) => List<Student>.from(json.decode(str).map((x) => Student.fromJson(x)));
 
-String studentToJson(Student data) => json.encode(data.toJson());
+String studentToJson(List<Student> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
 class Student {
   Student({
-    required this.success,
-    required this.current,
-    required this.receiver,
-    required this.sent,
-    required this.message,
-  });
-
-  bool success;
-  Current current;
-  int receiver;
-  int sent;
-  String message;
-
-  factory Student.fromJson(Map<String, dynamic> json) => Student(
-    success: json["success"],
-    current: Current.fromJson(json["current"]),
-    receiver: json["receiver"],
-    sent: json["sent"],
-    message: json["message"],
-  );
-
-  Map<String, dynamic> toJson() => {
-    "success": success,
-    "current": current.toJson(),
-    "receiver": receiver,
-    "sent": sent,
-    "message": message,
-  };
-}
-
-class Current {
-  Current({
     required this.id,
     required this.firstName,
     required this.middleName,
@@ -50,6 +23,7 @@ class Current {
     required this.yearLevel,
     required this.isSmsSent,
     required this.isCoe,
+    required this.message,
   });
 
   int id;
@@ -64,8 +38,9 @@ class Current {
   String yearLevel;
   int isSmsSent;
   int isCoe;
+  String message;
 
-  factory Current.fromJson(Map<String, dynamic> json) => Current(
+  factory Student.fromJson(Map<String, dynamic> json) => Student(
     id: json["id"],
     firstName: json["first_name"],
     middleName: json["middle_name"],
@@ -78,6 +53,7 @@ class Current {
     yearLevel: json["year_level"],
     isSmsSent: json["is_sms_sent"],
     isCoe: json["is_coe"],
+    message: json["message"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -93,5 +69,6 @@ class Current {
     "year_level": yearLevel,
     "is_sms_sent": isSmsSent,
     "is_coe": isCoe,
+    "message": message,
   };
 }
