@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lazy_load_scrollview/lazy_load_scrollview.dart';
 import 'package:sms_sender/count.dart';
 import 'package:sms_sender/data.dart';
 import 'package:sms_sender/student.dart';
@@ -17,8 +18,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'CatSU SMS Sender',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+          primarySwatch: Colors.blue, backgroundColor: Colors.blueAccent),
       home: const MyHomePage(title: 'CatSU SMS Sender'),
     );
   }
@@ -36,16 +36,13 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final Telephony telephony = Telephony.instance;
 
-  List<Student>? _student;
+  late List<Student> _student;
   Count? _count;
   bool _hasData = false;
-  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _getStudents();
-    _getCount();
     initPlatformState();
   }
 
@@ -54,14 +51,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future _getStudents() async {
-    _loading = true;
     Data.getStudent().then((student) {
       setState(() {
         _student = student;
-        _loading = false;
         _hasData = true;
       });
     });
+
+    return _student;
   }
 
   Future _getCount() async {
@@ -73,19 +70,52 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future _send() async {
-    for (var i in _student!) {
+    for (var i in _student) {
+      await Future.delayed(const Duration(seconds: 3));
       _sendMessage(i.id, i.mobileNumber, i.message);
     }
   }
 
   void _sendMessage(id, address, message) {
+    setState(() {
+      _hasData = false;
+    });
+
     Data.postAndGetStudent(id.toString());
-    _getCount();
 
     telephony.sendSms(
       to: address,
       message: message,
     );
+
+    _getCount();
+  }
+
+  void _alertDialog() {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Send Notification"),
+            titleTextStyle: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.black, fontSize: 20),
+            actionsOverflowButtonSpacing: 20,
+            actions: [
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("No")),
+              ElevatedButton(
+                  onPressed: () {
+                    _send();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("Yes")),
+            ],
+            content: const Text("Send an SMS notification to students?"),
+          );
+        });
   }
 
   @override
@@ -98,7 +128,7 @@ class _MyHomePageState extends State<MyHomePage> {
               Container(
                 height: 250.0,
                 width: double.infinity,
-                color: Color(Data.getColorHexFromStr('#FDD148')),
+                color: Colors.amberAccent,
               ),
               Positioned(
                 bottom: 250.0,
@@ -108,8 +138,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: 400.0,
                   decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(200.0),
-                      color: Color(Data.getColorHexFromStr('#FEE16D'))
-                          .withOpacity(0.4)),
+                      color: Colors.amberAccent.withOpacity(0.4)),
                 ),
               ),
               Positioned(
@@ -120,8 +149,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     width: 300.0,
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(150.0),
-                        color: Color(Data.getColorHexFromStr('#FEE16D'))
-                            .withOpacity(0.5))),
+                        color: Colors.amberAccent.withOpacity(0.5))),
               ),
               Column(
                 children: <Widget>[
@@ -150,11 +178,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           IconButton(
                             icon: const Icon(Icons.people_alt_rounded),
                             color: Colors.white,
-                            iconSize: 40.0,
+                            iconSize: 30.0,
                             onPressed: () {},
                           ),
                           Text(
-                            '${_count?.students ?? 0}',
+                            '${_count?.students ?? '0'}',
                             style: const TextStyle(
                                 fontFamily: 'Quicksand',
                                 fontSize: 30.0,
@@ -168,7 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           IconButton(
                             icon: const Icon(Icons.message),
                             color: Colors.white,
-                            iconSize: 40.0,
+                            iconSize: 30.0,
                             onPressed: () {},
                           ),
                           Text(
@@ -181,6 +209,26 @@ class _MyHomePageState extends State<MyHomePage> {
                           )
                         ],
                       ),
+                      Column(
+                        children: <Widget>[
+                          IconButton(
+                            icon: const Icon(Icons.sync_outlined),
+                            color: Colors.white,
+                            iconSize: 40.0,
+                            onPressed: () {
+                              _getCount();
+                            },
+                          ),
+                          const Text(
+                            'Sync',
+                            style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 20.0,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w300),
+                          )
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 30.0),
@@ -189,17 +237,46 @@ class _MyHomePageState extends State<MyHomePage> {
             ]),
           ]),
           const SizedBox(height: 15.0),
-          _loading == true
-              ? Container(
-                  alignment: Alignment.topCenter,
-                  margin: const EdgeInsets.only(top: 20),
-                  child: const CircularProgressIndicator(
-                    value: 0.8,
-                  ))
-              : const SizedBox(height: 15.0),
-          for (var i in _student!)
-            listItem('${i.firstName.toString()} ${i.surName.toString()}',
-                Colors.blue, Icons.person, i.mobileNumber, i.yearLevel)
+          FutureBuilder(
+            future: _getStudents(),
+            builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+              if (snapshot.data == null) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      SizedBox(height: 20),
+                      CircularProgressIndicator(),
+                    ],
+                  ),
+                );
+              } else {
+                return Scrollbar(
+                    child: LazyLoadScrollView(
+                      onEndOfPage: () { _getStudents(); },
+                      child: ListView.builder(
+                          physics: const ScrollPhysics(),
+                          scrollDirection: Axis.vertical,
+                          shrinkWrap: true,
+                          itemCount: snapshot.data.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return ListTile(
+                              leading: const Icon(Icons.supervised_user_circle,
+                                  color: Colors.blueAccent, size: 30.0),
+                              title: Text(
+                                  '${snapshot.data[index].firstName} ${snapshot.data[index].surName}'),
+                              subtitle: Text(snapshot.data[index].mobileNumber),
+                              trailing: Text(
+                                snapshot.data[index].studentNumber,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                              dense: true,
+                            );
+                          }),
+                    ));
+              }
+            },
+          ),
         ],
       ),
       floatingActionButton: !_hasData
@@ -211,52 +288,10 @@ class _MyHomePageState extends State<MyHomePage> {
             )
           : FloatingActionButton(
               backgroundColor: Colors.yellow,
-              onPressed: _send,
+              onPressed: _alertDialog,
               tooltip: 'Send message',
               child: const Icon(Icons.send_rounded),
             ),
-    );
-  }
-
-  Widget listItem(String title, Color buttonColor, iconButton, number, level) {
-    return Padding(
-      padding: const EdgeInsets.all(10.0),
-      child: Row(
-        children: <Widget>[
-          Container(
-            height: 50.0,
-            width: 50.0,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25.0),
-                color: buttonColor.withOpacity(0.3)),
-            child: Icon(iconButton, color: buttonColor, size: 25.0),
-          ),
-          const SizedBox(width: 25.0),
-          SizedBox(
-              width: MediaQuery.of(context).size.width - 100.0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        title,
-                        style: const TextStyle(
-                            fontFamily: 'Quicksand',
-                            fontSize: 15.0,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        number,
-                      )
-                    ],
-                  ),
-                ],
-              )),
-        ],
-      ),
     );
   }
 }
