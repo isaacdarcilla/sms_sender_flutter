@@ -14,8 +14,8 @@ class Count {
     required this.sent,
   });
 
-  int students;
-  int sent;
+  String students;
+  String sent;
 
   factory Count.fromJson(Map<String, dynamic> json) => Count(
         students: json["students"],
