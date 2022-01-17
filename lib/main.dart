@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lazy_load_scrollview/lazy_load_scrollview.dart';
 import 'package:sms_sender/count.dart';
 import 'package:sms_sender/data.dart';
 import 'package:sms_sender/student.dart';
@@ -252,28 +251,25 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               } else {
                 return Scrollbar(
-                    child: LazyLoadScrollView(
-                      onEndOfPage: () { _getStudents(); },
-                      child: ListView.builder(
-                          physics: const ScrollPhysics(),
-                          scrollDirection: Axis.vertical,
-                          shrinkWrap: true,
-                          itemCount: snapshot.data.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            return ListTile(
-                              leading: const Icon(Icons.supervised_user_circle,
-                                  color: Colors.blueAccent, size: 30.0),
-                              title: Text(
-                                  '${snapshot.data[index].firstName} ${snapshot.data[index].surName}'),
-                              subtitle: Text(snapshot.data[index].mobileNumber),
-                              trailing: Text(
-                                snapshot.data[index].studentNumber,
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                              dense: true,
-                            );
-                          }),
-                    ));
+                    child: ListView.builder(
+                        physics: const ScrollPhysics(),
+                        scrollDirection: Axis.vertical,
+                        shrinkWrap: true,
+                        itemCount: snapshot.data.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          return ListTile(
+                            leading: const Icon(Icons.supervised_user_circle,
+                                color: Colors.blueAccent, size: 30.0),
+                            title: Text(
+                                '${snapshot.data[index].firstName} ${snapshot.data[index].surName}'),
+                            subtitle: Text(snapshot.data[index].mobileNumber),
+                            trailing: Text(
+                              snapshot.data[index].isSmsSent == 1 ? "Notified" : "Not Notified",
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            dense: true,
+                          );
+                        }));
               }
             },
           ),

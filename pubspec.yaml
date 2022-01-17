@@ -30,7 +30,6 @@ dependencies:
   sms_advanced: ^1.0.1
   telephony: ^0.1.4
   http: ^0.13.4
-  lazy_load_scrollview: 1.3.0
   flutter:
     sdk: flutter
 
